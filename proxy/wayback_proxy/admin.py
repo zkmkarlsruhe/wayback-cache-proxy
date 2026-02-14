@@ -32,6 +32,12 @@ class AdminHandler:
                 return await self._stop_crawl()
             if path == "/_admin/crawl/clear-log":
                 return await self._clear_log()
+            if path == "/_admin/cache/clear-hot":
+                return await self._clear_hot()
+            if path == "/_admin/cache/delete":
+                return await self._delete_url(form)
+            if path == "/_admin/crawl/recrawl":
+                return "RECRAWL"  # signal to server
 
         return (404, "text/html; charset=utf-8", b"<h1>404 Not Found</h1>")
 
@@ -41,6 +47,7 @@ class AdminHandler:
         seeds = await self.cache.get_seeds()
         status = await self.cache.get_crawl_status()
         log_lines = await self.cache.get_crawl_log(100)
+        stats = await self.cache.get_stats()
 
         state = status.get("state", "idle")
         progress = status.get("progress", {})
@@ -105,13 +112,23 @@ class AdminHandler:
                 'background:#206040;color:#fff;border:1px solid #40a060;'
                 'padding:4px 12px;cursor:pointer;margin-right:8px">'
                 '</form>'
+                '<form method="POST" action="/_admin/crawl/recrawl" style="display:inline">'
+                '<input type="submit" value="Recrawl (force)" style="'
+                'background:#604020;color:#fff;border:1px solid #906030;'
+                'padding:4px 12px;cursor:pointer;margin-right:8px">'
+                '</form>'
             )
+
+        # Cache stats
+        curated_n = stats.get("curated_count", 0)
+        hot_n = stats.get("hot_count", 0)
 
         page = f"""\
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<noscript><meta http-equiv="refresh" content="5"></noscript>
 <title>Wayback Proxy Admin</title>
 <style>
 body {{ background:#0e0e1a; color:#e0e0e0; font-family:monospace; margin:20px; }}
@@ -132,12 +149,15 @@ a {{ color:#8080ff; }}
 </style>
 </head>
 <body>
-<h1>Wayback Proxy Admin</h1>
+<h1 style="display:inline">Wayback Proxy Admin</h1>
+<button id="autoRefreshBtn" style="margin-left:16px;background:#333;color:#ccc;border:1px solid #555;\
+padding:4px 12px;cursor:pointer;font-family:monospace;font-size:12px;vertical-align:middle">\
+Auto-Refresh: OFF</button>
 
 <h2>Crawl Seeds</h2>
 <table>
 <tr><th>URL</th><th>Depth</th><th></th></tr>
-{seed_rows}
+<tbody id="seedRows">{seed_rows}</tbody>
 </table>
 
 <form method="POST" action="/_admin/crawl/add" style="margin-top:8px">
@@ -147,17 +167,89 @@ border:1px solid #406090;padding:4px 12px;cursor:pointer">
 </form>
 
 <h2>Crawl Status</h2>
+<div id="crawlStatus">
 <p>State: <strong style="color:{state_color}">{state}</strong></p>
 {progress_html}
 {crawl_buttons}
+</div>
 
 <h2>Crawl Log</h2>
 <form method="POST" action="/_admin/crawl/clear-log" style="margin-bottom:4px">
 <input type="submit" value="Clear Log" style="background:#333;color:#ccc;\
 border:1px solid #555;padding:2px 8px;cursor:pointer">
 </form>
-<pre>{log_html}</pre>
+<pre id="crawlLog">{log_html}</pre>
 
+<h2>Cache</h2>
+<div id="cacheStatus">
+<p>Curated: <strong>{curated_n}</strong> &nbsp; Hot: <strong>{hot_n}</strong></p>
+</div>
+<form method="POST" action="/_admin/cache/delete" style="margin-top:8px">
+<input type="text" name="url" placeholder="http://example.com/page.html">
+<input type="submit" value="Delete from Cache" style="background:#802020;color:#fff;\
+border:1px solid #a04040;padding:4px 12px;cursor:pointer">
+</form>
+<form method="POST" action="/_admin/cache/clear-hot" style="margin-top:8px;display:inline">
+<input type="submit" value="Clear All Hot Cache" style="background:#802020;color:#fff;\
+border:1px solid #a04040;padding:4px 12px;cursor:pointer"\
+ onclick="return confirm('Clear all hot cache entries?')">
+</form>
+
+<script>
+<!--
+var btn=document.getElementById("autoRefreshBtn");
+if(btn){{
+  var ids=["seedRows","crawlStatus","crawlLog","cacheStatus"];
+  var timer=null;
+  var on=false;
+
+  function wbUpdate(){{
+    var xhr;
+    if(window.XMLHttpRequest){{
+      xhr=new XMLHttpRequest();
+    }}else{{
+      try{{ xhr=new ActiveXObject("Microsoft.XMLHTTP"); }}catch(e){{ return; }}
+    }}
+    xhr.open("GET","/_admin/",true);
+    xhr.onreadystatechange=function(){{
+      if(xhr.readyState!=4||xhr.status!=200) return;
+      var tmp=document.createElement("div");
+      tmp.innerHTML=xhr.responseText;
+      for(var i=0;i<ids.length;i++){{
+        var live=document.getElementById(ids[i]);
+        if(!live) continue;
+        var all=tmp.getElementsByTagName("*");
+        for(var j=0;j<all.length;j++){{
+          if(all[j].id==ids[i]){{
+            live.innerHTML=all[j].innerHTML;
+            break;
+          }}
+        }}
+      }}
+    }};
+    xhr.send(null);
+  }}
+
+  btn.onclick=function(){{
+    if(on){{
+      on=false;
+      btn.style.background="#333";
+      btn.style.borderColor="#555";
+      btn.innerHTML="Auto-Refresh: OFF";
+      if(timer) clearInterval(timer);
+      timer=null;
+    }}else{{
+      on=true;
+      btn.style.background="#206040";
+      btn.style.borderColor="#40a060";
+      btn.innerHTML="Auto-Refresh: ON";
+      wbUpdate();
+      timer=setInterval(wbUpdate,5000);
+    }}
+  }};
+}}
+// -->
+</script>
 </body>
 </html>"""
 
@@ -200,6 +292,16 @@ border:1px solid #555;padding:2px 8px;cursor:pointer">
 
     async def _clear_log(self) -> Tuple[int, str, bytes]:
         await self.cache.clear_crawl_log()
+        return self._redirect("/_admin/")
+
+    async def _clear_hot(self) -> Tuple[int, str, bytes]:
+        await self.cache.clear_hot()
+        return self._redirect("/_admin/")
+
+    async def _delete_url(self, form: dict) -> Tuple[int, str, bytes]:
+        url = form.get("url", "").strip()
+        if url:
+            await self.cache.delete(url, tier="both")
         return self._redirect("/_admin/")
 
     # ── helpers ───────────────────────────────────────────────────────

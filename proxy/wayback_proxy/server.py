@@ -288,7 +288,12 @@ class ProxyServer:
         return self.config.throttle.default_speed
 
     def _is_landing_page_request(self, target: str, headers: dict) -> bool:
-        """Check if this request is for the proxy's own landing page."""
+        """Check if this request is for the proxy's own landing page.
+
+        Handles both direct access (GET /) and explicit proxy requests.
+        Matches against the proxy's own address on any port, since the
+        proxy may be exposed on a different external port.
+        """
         if not self.config.landing_page.enabled:
             return False
 
@@ -296,27 +301,24 @@ class ProxyServer:
         proxy_host = self.config.proxy.host
         proxy_port = self.config.proxy.port
 
+        # Extract just the hostname (without port) from the Host header
+        host_name = host.split(":")[0] if ":" in host else host
+        local_names = {"localhost", "127.0.0.1", proxy_host}
+        # Also match 0.0.0.0 since that's a common bind address
+        if proxy_host == "0.0.0.0":
+            local_names.add("0.0.0.0")
+
         # Direct access: GET / with Host pointing at proxy
         if target == "/":
-            # Match against proxy's own address
-            expected_hosts = {
-                f"{proxy_host}:{proxy_port}",
-                f"localhost:{proxy_port}",
-                f"127.0.0.1:{proxy_port}",
-            }
-            if proxy_port == 80:
-                expected_hosts.update({proxy_host, "localhost", "127.0.0.1"})
-            if host in expected_hosts:
+            if host_name in local_names:
                 return True
 
         # Explicit proxy: target URL points at proxy itself
         if target.startswith("http"):
             parsed = urlparse(target)
             target_host = parsed.hostname or ""
-            target_port = parsed.port or 80
-            if target_host in ("localhost", "127.0.0.1", proxy_host):
-                if target_port == proxy_port and parsed.path in ("/", ""):
-                    return True
+            if target_host in local_names and parsed.path in ("/", ""):
+                return True
 
         return False
 
@@ -338,6 +340,13 @@ class ProxyServer:
     async def start(self):
         """Start the proxy server."""
         await self.cache.connect()
+
+        # Reset stale crawl state from previous run
+        if self.crawler:
+            status = await self.cache.get_crawl_status()
+            if status.get("state") in ("running", "stopping"):
+                await self.cache.set_crawl_status("idle", status.get("progress", {}))
+                print("[PROXY] Reset stale crawl state to idle")
 
         self._server = await asyncio.start_server(
             self._handle_client,
@@ -431,10 +440,13 @@ class ProxyServer:
 
                 result = await self.admin.handle(method, target, headers, body)
 
-                # "START_CRAWL" is a signal to launch the crawler
+                # "START_CRAWL" / "RECRAWL" are signals to launch the crawler
                 if result == "START_CRAWL":
                     await self._start_crawl()
-                    # redirect back
+                    result = (303, "/_admin/", b"")
+                elif result == "RECRAWL":
+                    await self.cache.clear_hot()
+                    await self._start_crawl()
                     result = (303, "/_admin/", b"")
 
                 status_code, ct_or_loc, body_bytes = result
@@ -489,8 +501,9 @@ class ProxyServer:
             cached = await self.cache.get(url)
             if cached:
                 await self._send_response(writer, cached, speed=speed)
-                # Track view (fire-and-forget)
-                asyncio.create_task(self._track_view_safe(url))
+                # Track view for HTML pages only (skip assets)
+                if "text/html" in cached.content_type:
+                    asyncio.create_task(self._track_view_safe(url))
                 return
 
             # Fetch from Wayback
@@ -527,8 +540,9 @@ class ProxyServer:
             # Send to client
             await self._send_response(writer, cached_response, speed=speed)
 
-            # Track view (fire-and-forget)
-            asyncio.create_task(self._track_view_safe(url))
+            # Track view for HTML pages only (skip assets)
+            if "text/html" in response.content_type:
+                asyncio.create_task(self._track_view_safe(url))
 
         except Exception as e:
             print(f"[PROXY] Error: {e}")
@@ -561,9 +575,11 @@ class ProxyServer:
                 pass
 
     async def _track_view_safe(self, url: str):
-        """Track a view, ignoring errors."""
+        """Track a domain view, ignoring errors."""
         try:
-            await self.cache.track_view(url)
+            parsed = urlparse(url)
+            domain = parsed.hostname or url
+            await self.cache.track_view(domain)
         except Exception:
             pass
 
@@ -623,9 +639,9 @@ class ProxyServer:
 
         if most_viewed:
             items = ""
-            for url, views in most_viewed:
+            for domain, views in most_viewed:
                 items += (
-                    f'<li><a href="{url}">{url}</a> '
+                    f'<li>{domain} '
                     f'<span class="count">({int(views)} views)</span></li>\n'
                 )
             most_viewed_html = f"<ol>\n{items}</ol>"
