@@ -1,0 +1,22 @@
+[project]
+name = "wayback-proxy"
+version = "0.1.0"
+description = "HTTP/HTTPS proxy for Wayback Machine"
+authors = [
+    {name = "agentbox"}
+]
+requires-python = "^3.11"
+dependencies = [
+    "httpx (>=0.28.1,<0.29.0)",
+    "redis (>=7.1.0,<8.0.0)",
+    "aiohttp (>=3.13.3,<4.0.0)",
+    "cryptography (>=46.0.3,<47.0.0)"
+]
+
+
+[project.scripts]
+wayback-proxy = "wayback_proxy.__main__:main"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

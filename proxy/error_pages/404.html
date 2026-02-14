@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Not Found</title>
+<style>
+  body {
+    font-family: "Courier New", monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    text-align: center;
+    max-width: 600px;
+    padding: 2em;
+  }
+  .code {
+    font-size: 6em;
+    font-weight: bold;
+    color: #e94560;
+    margin: 0;
+    line-height: 1;
+  }
+  .message {
+    font-size: 1.5em;
+    color: #e94560;
+    margin: 0.5em 0 1em;
+  }
+  .description {
+    font-size: 1em;
+    color: #a0a0b0;
+    line-height: 1.6;
+    margin-bottom: 1.5em;
+  }
+  .url {
+    font-size: 0.9em;
+    color: #707090;
+    word-break: break-all;
+    background: #12122a;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    margin-bottom: 2em;
+  }
+  .hint {
+    font-size: 0.85em;
+    color: #505070;
+    line-height: 1.6;
+  }
+  .meta {
+    font-size: 0.8em;
+    color: #505070;
+    border-top: 1px solid #2a2a4e;
+    padding-top: 1em;
+    margin-top: 2em;
+  }
+  .meta span { color: #707090; }
+</style>
+</head>
+<body>
+<div class="container">
+  <p class="code">404</p>
+  <p class="message">Not Archived</p>
+  <p class="description">This page was not found in the Wayback Machine's archive.</p>
+  <div class="url">$url</div>
+  <p class="hint">
+    The page may not have been crawled around <strong>$date</strong>,
+    or it may have been excluded by the site's robots.txt.
+  </p>
+  <div class="meta">
+    Wayback Proxy &middot; Target date: <span>$date</span>
+  </div>
+</div>
+</body>
+</html>

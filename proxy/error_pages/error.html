@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>$code $message</title>
+<style>
+  body {
+    font-family: "Courier New", monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    text-align: center;
+    max-width: 600px;
+    padding: 2em;
+  }
+  .code {
+    font-size: 6em;
+    font-weight: bold;
+    color: #e94560;
+    margin: 0;
+    line-height: 1;
+  }
+  .message {
+    font-size: 1.5em;
+    color: #e94560;
+    margin: 0.5em 0 1em;
+  }
+  .description {
+    font-size: 1em;
+    color: #a0a0b0;
+    line-height: 1.6;
+    margin-bottom: 2em;
+  }
+  .meta {
+    font-size: 0.8em;
+    color: #505070;
+    border-top: 1px solid #2a2a4e;
+    padding-top: 1em;
+  }
+  .meta span { color: #707090; }
+</style>
+</head>
+<body>
+<div class="container">
+  <p class="code">$code</p>
+  <p class="message">$message</p>
+  <p class="description">$description</p>
+  <div class="meta">
+    <span>$url</span><br>
+    Wayback Proxy &middot; Target date: <span>$date</span>
+  </div>
+</div>
+</body>
+</html>

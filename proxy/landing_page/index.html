@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Wayback Proxy</title>
+<style>
+  body {
+    font-family: "Courier New", monospace;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    text-align: center;
+    max-width: 700px;
+    padding: 2em;
+  }
+  h1 {
+    font-size: 2.5em;
+    color: #e94560;
+    margin: 0 0 0.2em;
+  }
+  .subtitle {
+    font-size: 1.1em;
+    color: #707090;
+    margin-bottom: 2em;
+  }
+  .custom-text {
+    font-size: 1em;
+    color: #a0a0b0;
+    margin-bottom: 2em;
+    line-height: 1.6;
+  }
+  .speed-info {
+    font-size: 0.9em;
+    color: #505070;
+    margin-bottom: 2em;
+  }
+  .speed-info span {
+    color: #e94560;
+  }
+  h2 {
+    font-size: 1.2em;
+    color: #a0a0b0;
+    margin: 2em 0 1em;
+    border-bottom: 1px solid #2a2a4e;
+    padding-bottom: 0.5em;
+  }
+  .most-viewed {
+    text-align: left;
+    margin: 0 auto;
+    max-width: 500px;
+  }
+  .most-viewed ol {
+    padding-left: 1.5em;
+  }
+  .most-viewed li {
+    margin: 0.6em 0;
+    line-height: 1.4;
+  }
+  .most-viewed a {
+    color: #6090c0;
+    text-decoration: none;
+    word-break: break-all;
+  }
+  .most-viewed a:hover {
+    color: #e94560;
+    text-decoration: underline;
+  }
+  .most-viewed .count {
+    color: #505070;
+    font-size: 0.85em;
+  }
+  .empty {
+    color: #505070;
+    font-style: italic;
+  }
+  .meta {
+    font-size: 0.8em;
+    color: #505070;
+    border-top: 1px solid #2a2a4e;
+    padding-top: 1em;
+    margin-top: 2em;
+  }
+  .meta span { color: #707090; }
+  .hint {
+    font-size: 0.85em;
+    color: #505070;
+    margin-top: 2em;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Wayback Proxy</h1>
+  <p class="subtitle">Serving the web as it was on <span style="color:#e94560">$date</span></p>
+  $custom_text
+  $speed_info
+  <h2>Most Viewed Pages</h2>
+  <div class="most-viewed">
+    $most_viewed
+  </div>
+  <p class="hint">
+    Configure your browser to use this server as an HTTP proxy,<br>
+    then browse the web to see it as it was.
+  </p>
+  <div class="meta">
+    Wayback Proxy &middot; Target date: <span>$date</span>
+  </div>
+</div>
+</body>
+</html>
