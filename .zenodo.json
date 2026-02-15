@@ -1,0 +1,36 @@
+{
+  "title": "Wayback Cache Proxy",
+  "description": "HTTP/HTTPS caching proxy for the Wayback Machine. Redis-backed two-tier cache, admin interface, prefetch crawler, modem speed throttling, and header bar overlay. Built for museums and media art exhibitions.",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Schütze, Marc",
+      "affiliation": "ZKM | Center for Art and Media Karlsruhe",
+      "orcid": "0009-0007-0718-4251"
+    }
+  ],
+  "keywords": [
+    "wayback-machine",
+    "proxy",
+    "caching",
+    "museum",
+    "media-art",
+    "net-art",
+    "digital-preservation",
+    "web-archive"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/zkmkarlsruhe/wayback-cache-proxy",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "communities": [
+    {
+      "identifier": "zenodo"
+    }
+  ]
+}

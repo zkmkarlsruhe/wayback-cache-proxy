@@ -1,5 +1,6 @@
 # Wayback Cache Proxy
 
+[![DOI](https://zenodo.org/badge/DOI/ZENODO_DOI_HERE.svg)](https://doi.org/ZENODO_DOI_HERE)
 [![ZKM](https://img.shields.io/badge/ZKM-Karlsruhe-blue)](https://zkm.de)
 [![ZKM Open Source](https://img.shields.io/badge/ZKM-Open%20Source-blue)](https://github.com/zkmkarlsruhe)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)

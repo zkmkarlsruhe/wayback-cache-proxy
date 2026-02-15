@@ -3,7 +3,7 @@ name = "wayback-admin"
 version = "0.1.0"
 description = "FastAPI admin service for Wayback Cache Proxy"
 authors = [
-    {name = "agentbox"}
+    {name = "Marc Schütze", email = "mschuetze@zkm.de"}
 ]
 requires-python = "^3.11"
 dependencies = [

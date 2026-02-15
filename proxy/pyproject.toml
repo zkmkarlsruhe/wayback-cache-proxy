@@ -3,7 +3,7 @@ name = "wayback-proxy"
 version = "0.1.0"
 description = "HTTP/HTTPS proxy for Wayback Machine"
 authors = [
-    {name = "agentbox"}
+    {name = "Marc Schütze", email = "mschuetze@zkm.de"}
 ]
 requires-python = "^3.11"
 dependencies = [

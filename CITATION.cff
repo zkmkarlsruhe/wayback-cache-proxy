@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Wayback Cache Proxy"
+version: 0.1.0
+date-released: "2025-01-01"
+license: MIT
+repository-code: "https://github.com/zkmkarlsruhe/wayback-cache-proxy"
+url: "https://zkm.de"
+abstract: >-
+  HTTP/HTTPS caching proxy for the Wayback Machine. Redis-backed two-tier
+  cache, admin interface, prefetch crawler, modem speed throttling, and
+  header bar overlay. Built for museums and media art exhibitions.
+authors:
+  - family-names: "Schütze"
+    given-names: "Marc"
+    affiliation: "ZKM | Center for Art and Media Karlsruhe"
+    orcid: "https://orcid.org/0009-0007-0718-4251"
+keywords:
+  - wayback-machine
+  - proxy
+  - caching
+  - museum
+  - media-art
+  - net-art
+  - digital-preservation
+  - web-archive
