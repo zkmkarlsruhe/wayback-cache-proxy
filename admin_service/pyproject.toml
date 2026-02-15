@@ -1,0 +1,24 @@
+[project]
+name = "wayback-admin"
+version = "0.1.0"
+description = "FastAPI admin service for Wayback Cache Proxy"
+authors = [
+    {name = "agentbox"}
+]
+requires-python = "^3.11"
+dependencies = [
+    "fastapi (>=0.115.0,<1.0.0)",
+    "uvicorn[standard] (>=0.34.0,<1.0.0)",
+    "jinja2 (>=3.1.0,<4.0.0)",
+    "pyyaml (>=6.0,<7.0)",
+    "redis (>=7.1.0,<8.0.0)",
+    "python-multipart (>=0.0.9,<1.0.0)",
+    "itsdangerous (>=2.1.0,<3.0.0)"
+]
+
+[project.scripts]
+wayback-admin = "admin_service.__main__:main"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

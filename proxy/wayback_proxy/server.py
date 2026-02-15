@@ -67,6 +67,7 @@ class ProxyServer:
         )
         self._server: Optional[asyncio.Server] = None
         self._crawl_task: Optional[asyncio.Task] = None
+        self._reload_task: Optional[asyncio.Task] = None
 
         # Admin + crawler
         self.admin = AdminHandler(self.cache) if config.admin.enabled else None
@@ -348,6 +349,10 @@ class ProxyServer:
                 await self.cache.set_crawl_status("idle", status.get("progress", {}))
                 print("[PROXY] Reset stale crawl state to idle")
 
+        # Start config reload listener if using YAML config
+        if self.config._config_path:
+            self._reload_task = asyncio.create_task(self._config_reload_listener())
+
         self._server = await asyncio.start_server(
             self._handle_client,
             self.config.proxy.host,
@@ -367,17 +372,94 @@ class ProxyServer:
         if self.config.admin.enabled:
             auth_mode = "password" if self.config.admin.password else "open"
             print(f"[PROXY] Admin: enabled (auth: {auth_mode})")
+        if self.config._config_path:
+            print(f"[PROXY] Config reload: listening on wayback:config_reload")
 
         async with self._server:
             await self._server.serve_forever()
 
     async def stop(self):
         """Stop the proxy server."""
+        if self._reload_task:
+            self._reload_task.cancel()
         if self._server:
             self._server.close()
             await self._server.wait_closed()
         await self.wayback.close()
         await self.cache.close()
+
+    async def _config_reload_listener(self):
+        """Subscribe to Redis for config reload signals.
+
+        Hot-swappable fields: wayback.target_date, throttle.*, header_bar.*,
+        landing_page.*, access.mode, admin.password.
+        Non-reloadable (require restart): proxy.host, proxy.port, cache.redis_url.
+        """
+        import redis.asyncio as aioredis
+
+        sub_client = aioredis.from_url(
+            self.config.cache.redis_url, decode_responses=True,
+        )
+        pubsub = sub_client.pubsub()
+        await pubsub.subscribe("wayback:config_reload")
+        print("[PROXY] Subscribed to wayback:config_reload")
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                print("[PROXY] Config reload signal received")
+                try:
+                    self._apply_config_reload()
+                except Exception as e:
+                    print(f"[PROXY] Config reload failed: {e}")
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await pubsub.unsubscribe("wayback:config_reload")
+            await sub_client.close()
+
+    def _apply_config_reload(self):
+        """Re-read YAML config and hot-swap runtime fields."""
+        path = self.config._config_path
+        if not path:
+            return
+
+        new_config = Config.from_yaml(path)
+
+        # Wayback settings
+        old_date = self.config.wayback.target_date
+        self.config.wayback.target_date = new_config.wayback.target_date
+        self.config.wayback.date_tolerance_days = new_config.wayback.date_tolerance_days
+        self.wayback.target_date = new_config.wayback.target_date
+        self.wayback.date_tolerance_days = new_config.wayback.date_tolerance_days
+        if old_date != new_config.wayback.target_date:
+            print(f"[PROXY] Reloaded target_date: {old_date} -> {new_config.wayback.target_date}")
+
+        # Throttle settings
+        self.config.throttle.default_speed = new_config.throttle.default_speed
+        self.config.throttle.allow_user_override = new_config.throttle.allow_user_override
+
+        # Header bar settings
+        self.config.header_bar.enabled = new_config.header_bar.enabled
+        self.config.header_bar.position = new_config.header_bar.position
+        self.config.header_bar.custom_text = new_config.header_bar.custom_text
+        self.config.header_bar.custom_css = new_config.header_bar.custom_css
+        self.config.header_bar.show_speed_selector = new_config.header_bar.show_speed_selector
+        # Reload header bar template if toggled on
+        if self.config.header_bar.enabled and not self._header_bar_template:
+            self._load_header_bar_template()
+
+        # Landing page
+        self.config.landing_page.enabled = new_config.landing_page.enabled
+
+        # Access mode
+        self.config.access.mode = new_config.access.mode
+
+        # Admin password
+        self.config.admin.password = new_config.admin.password
+
+        print("[PROXY] Config reloaded successfully")
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

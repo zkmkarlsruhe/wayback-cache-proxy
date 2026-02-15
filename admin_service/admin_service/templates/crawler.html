@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Crawler{% endblock %}
+
+{% block content %}
+<h2>Crawler</h2>
+
+<!-- Seeds table -->
+<div class="card">
+  <h3>Crawl Seeds</h3>
+  {% if seeds %}
+  <table>
+    <thead>
+      <tr><th>URL</th><th style="width:80px">Depth</th><th style="width:60px"></th></tr>
+    </thead>
+    <tbody>
+      {% for url, depth in seeds %}
+      <tr>
+        <td style="max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ url }}">
+          {{ url }}
+        </td>
+        <td style="text-align:center">{{ depth }}</td>
+        <td>
+          <form method="post" action="/crawler/remove-seed" class="inline-form">
+            <input type="hidden" name="url" value="{{ url }}">
+            <button type="submit" class="btn btn-danger btn-sm">Del</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-muted)">No seeds configured.</p>
+  {% endif %}
+
+  <form method="post" action="/crawler/add-seed" style="display:flex;gap:8px;margin-top:10px">
+    <input type="text" name="url" placeholder="http://example.com" style="flex:1" required>
+    <input type="number" name="depth" value="1" min="0" max="10" style="width:60px" title="Link depth">
+    <button type="submit" class="btn btn-primary btn-sm">Add Seed</button>
+  </form>
+</div>
+
+<!-- Status + controls -->
+<div id="crawler-live"
+     hx-get="/crawler/log-partial"
+     hx-trigger="every 2s"
+     hx-swap="innerHTML">
+  {% include "partials/crawler_live.html" %}
+</div>
+{% endblock %}

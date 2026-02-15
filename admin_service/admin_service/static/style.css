@@ -1,0 +1,370 @@
+/* Wayback Proxy Admin — dark theme */
+:root {
+  --bg: #0e0e1a;
+  --bg-surface: #12122a;
+  --bg-hover: #1a1a35;
+  --border: #303050;
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --accent: #8080ff;
+  --accent-dim: #606090;
+  --green: #4a4;
+  --orange: #c84;
+  --red: #a04040;
+  --green-bg: #206040;
+  --red-bg: #802020;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  flex-shrink: 0;
+}
+
+.sidebar h1 {
+  font-size: 14px;
+  color: var(--accent);
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.sidebar nav a {
+  display: block;
+  padding: 8px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  color: var(--text);
+  background: var(--bg-hover);
+  text-decoration: none;
+}
+
+.main {
+  flex: 1;
+  padding: 24px 32px;
+  max-width: 1200px;
+}
+
+.main h2 {
+  font-size: 18px;
+  color: var(--accent);
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.main h3 {
+  font-size: 14px;
+  color: var(--text);
+  margin: 20px 0 8px;
+  font-weight: 600;
+}
+
+/* Cards / panels */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat-card .label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* Forms */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+.btn {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn:hover { background: var(--bg-hover); }
+
+.btn-primary {
+  background: #2a2a60;
+  border-color: #4040a0;
+}
+.btn-primary:hover { background: #353580; }
+
+.btn-success {
+  background: var(--green-bg);
+  border-color: #40a060;
+}
+.btn-success:hover { background: #287050; }
+
+.btn-danger {
+  background: var(--red-bg);
+  border-color: var(--red);
+}
+.btn-danger:hover { background: #902828; }
+
+.btn-sm {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-idle { background: #333; color: var(--text-muted); }
+.badge-running { background: #1a4a1a; color: var(--green); }
+.badge-stopping { background: #4a3a1a; color: var(--orange); }
+.badge-pending_start { background: #1a1a4a; color: var(--accent); }
+
+/* Log */
+.log-box {
+  background: #0a0a16;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* Config form */
+.config-section {
+  margin-bottom: 20px;
+}
+
+.config-section h3 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.config-field {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.config-field label {
+  width: 200px;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.config-field input[type="text"],
+.config-field input[type="number"],
+.config-field select {
+  flex: 1;
+  max-width: 400px;
+}
+
+/* Flash messages */
+.flash {
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.flash-success {
+  background: #1a3a1a;
+  border: 1px solid #2a5a2a;
+  color: var(--green);
+}
+
+/* Login page */
+.login-container {
+  max-width: 360px;
+  margin: 100px auto;
+}
+
+.login-container h1 {
+  color: var(--accent);
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.login-container input[type="password"] {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.pagination a,
+.pagination span {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.pagination span.current {
+  background: var(--accent-dim);
+  color: #fff;
+}
+
+/* Inline form */
+.inline-form {
+  display: inline;
+}
+
+/* Top bar row */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar input[type="text"] {
+  width: 300px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  padding: 8px 16px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 13px;
+}
+
+.tabs a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tabs a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Logout link */
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  width: 220px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}

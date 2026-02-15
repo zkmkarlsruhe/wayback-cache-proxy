@@ -1,0 +1,49 @@
+<!-- Crawl status (htmx-swapped) -->
+<div class="card">
+  <h3>
+    Crawl Status:
+    <span class="badge badge-{{ state }}">{{ state }}</span>
+  </h3>
+
+  {% if progress %}
+  <p style="margin-top:8px">
+    Fetched: <strong>{{ progress.get('fetched', 0) }}</strong> /
+    {{ progress.get('total', 0) }}
+    &nbsp;&middot;&nbsp;
+    Errors: {{ progress.get('errors', 0) }}
+  </p>
+  {% if progress.get('current_url') %}
+  <p style="margin-top:4px;color:var(--text-muted);font-size:12px">
+    Current: <code>{{ progress.current_url }}</code>
+  </p>
+  {% endif %}
+  {% endif %}
+
+  <div class="toolbar" style="margin-top:12px">
+    {% if state == 'running' %}
+    <form method="post" action="/crawler/stop" class="inline-form">
+      <button type="submit" class="btn btn-danger btn-sm">Stop Crawl</button>
+    </form>
+    {% else %}
+    <form method="post" action="/crawler/start" class="inline-form">
+      <button type="submit" class="btn btn-success btn-sm">Start Crawl</button>
+    </form>
+    <form method="post" action="/crawler/recrawl" class="inline-form"
+          onsubmit="return confirm('This will clear all hot cache entries and start a fresh crawl. Continue?')">
+      <button type="submit" class="btn btn-sm" style="background:#604020;border-color:#906030">Recrawl (force)</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Log -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <h3 style="margin:0">Crawl Log</h3>
+    <form method="post" action="/crawler/clear-log" class="inline-form">
+      <button type="submit" class="btn btn-sm">Clear Log</button>
+    </form>
+  </div>
+  <div class="log-box">{% if log_lines %}{% for line in log_lines %}{{ line }}
+{% endfor %}{% else %}(empty){% endif %}</div>
+</div>

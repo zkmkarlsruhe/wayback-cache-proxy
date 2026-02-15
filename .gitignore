@@ -35,7 +35,7 @@ htmlcov/
 # Redis
 dump.rdb
 
-# Tooling (agentbox / claude code)
+# Tooling
 .agentbox/
 .agentbox.yml
 .boxctl/

@@ -5,12 +5,29 @@ services:
     build: ./proxy
     ports:
       - "8888:8888"
+    volumes:
+      - ./config.yaml:/app/config.yaml
     environment:
       - PROXY_HOST=0.0.0.0
       - PROXY_PORT=8888
       - TARGET_DATE=20010915
       - REDIS_URL=redis://redis:6379/0
       - ACCESS_MODE=open
+    command: python -m wayback_proxy --config /app/config.yaml
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  admin:
+    build: ./admin_service
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - REDIS_URL=redis://redis:6379/0
+    command: python -m admin_service --host 0.0.0.0 --port 8080 --config /app/config.yaml
     depends_on:
       - redis
     restart: unless-stopped

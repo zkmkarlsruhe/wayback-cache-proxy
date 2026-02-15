@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Cache{% endblock %}
+
+{% block content %}
+<h2>Cache Browser</h2>
+
+<div class="tabs">
+  <a href="/cache/?tier=curated" class="{% if tier == 'curated' %}active{% endif %}">Curated ({{ total if tier == 'curated' else '' }})</a>
+  <a href="/cache/?tier=hot" class="{% if tier == 'hot' %}active{% endif %}">Hot ({{ total if tier == 'hot' else '' }})</a>
+</div>
+
+<div class="toolbar">
+  <form method="get" action="/cache/" style="display:flex;gap:8px;align-items:center">
+    <input type="hidden" name="tier" value="{{ tier }}">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search URLs...">
+    <button type="submit" class="btn btn-sm">Search</button>
+    {% if search %}
+    <a href="/cache/?tier={{ tier }}" class="btn btn-sm">Clear</a>
+    {% endif %}
+  </form>
+
+  <div style="margin-left:auto;display:flex;gap:8px">
+    {% if tier == 'hot' %}
+    <form method="post" action="/cache/clear-hot" class="inline-form"
+          onsubmit="return confirm('Clear all hot cache entries?')">
+      <button type="submit" class="btn btn-danger btn-sm">Clear All Hot</button>
+    </form>
+    {% else %}
+    <form method="post" action="/cache/clear-curated" class="inline-form"
+          onsubmit="return confirm('Clear all curated cache entries? This cannot be undone.')">
+      <button type="submit" class="btn btn-danger btn-sm">Clear All Curated</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if entries %}
+<table>
+  <thead>
+    <tr>
+      <th>URL</th>
+      <th>Content Type</th>
+      <th>Date</th>
+      <th style="width:60px"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in entries %}
+    <tr>
+      <td style="max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ entry.url }}">
+        {{ entry.url }}
+      </td>
+      <td style="color:var(--text-muted)">{{ entry.content_type }}</td>
+      <td style="color:var(--text-muted)">{{ entry.timestamp }}</td>
+      <td>
+        <form method="post" action="/cache/delete" class="inline-form">
+          <input type="hidden" name="url" value="{{ entry.url }}">
+          <input type="hidden" name="tier" value="{{ tier }}">
+          <button type="submit" class="btn btn-danger btn-sm" title="Delete">Del</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="/cache/?tier={{ tier }}&search={{ search }}&page={{ page - 1 }}">Prev</a>
+  {% endif %}
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == page %}
+    <span class="current">{{ p }}</span>
+    {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+    <a href="/cache/?tier={{ tier }}&search={{ search }}&page={{ p }}">{{ p }}</a>
+    {% elif p == 4 or p == total_pages - 3 %}
+    <span>&hellip;</span>
+    {% endif %}
+  {% endfor %}
+  {% if page < total_pages %}
+  <a href="/cache/?tier={{ tier }}&search={{ search }}&page={{ page + 1 }}">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="card" style="text-align:center;color:var(--text-muted)">
+  {% if search %}
+  No entries matching "{{ search }}"
+  {% else %}
+  No entries in {{ tier }} cache
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:20px">
+  <h3>Delete by URL</h3>
+  <form method="post" action="/cache/delete" style="display:flex;gap:8px;margin-top:8px">
+    <input type="text" name="url" placeholder="http://example.com/page.html" style="flex:1">
+    <select name="tier" class="btn btn-sm">
+      <option value="both">Both tiers</option>
+      <option value="curated">Curated only</option>
+      <option value="hot">Hot only</option>
+    </select>
+    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+  </form>
+</div>
+{% endblock %}

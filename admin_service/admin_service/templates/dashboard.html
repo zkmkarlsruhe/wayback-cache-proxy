@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ stats.curated_count }}</div>
+    <div class="label">Curated Cache</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.hot_count }}</div>
+    <div class="label">Hot Cache</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.seed_count }}</div>
+    <div class="label">Crawl Seeds</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">{{ stats.allowlist_count }}</div>
+    <div class="label">Allowlist</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">
+      <span class="badge badge-{{ stats.crawl_state }}">{{ stats.crawl_state }}</span>
+    </div>
+    <div class="label">Crawler</div>
+  </div>
+</div>
+
+{% if stats.crawl_state == 'running' and stats.crawl_progress %}
+<div class="card">
+  <h3>Crawl Progress</h3>
+  <p>
+    Fetched: <strong>{{ stats.crawl_progress.get('fetched', 0) }}</strong> /
+    {{ stats.crawl_progress.get('total', 0) }}
+    &nbsp;&middot;&nbsp;
+    Errors: {{ stats.crawl_progress.get('errors', 0) }}
+  </p>
+  {% if stats.crawl_progress.get('current_url') %}
+  <p style="margin-top:4px;color:var(--text-muted);font-size:12px">
+    Current: <code>{{ stats.crawl_progress.current_url }}</code>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if stats.most_viewed %}
+<div class="card">
+  <h3>Most Viewed Domains</h3>
+  <table>
+    <thead>
+      <tr><th>Domain</th><th style="text-align:right">Views</th></tr>
+    </thead>
+    <tbody>
+      {% for domain, views in stats.most_viewed %}
+      <tr>
+        <td>{{ domain }}</td>
+        <td style="text-align:right">{{ views }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+# Wayback Cache Proxy — Configuration
+#
+# Copy this file to config.yaml and edit as needed.
+# Both the proxy and admin service read from this file.
+#
+# To reload the proxy without restarting, save changes via the admin UI
+# or publish a Redis message: PUBLISH wayback:config_reload reload
+
+# ── Proxy Server ──────────────────────────────────────────────────────
+proxy:
+  host: "0.0.0.0"          # Bind address
+  port: 8888               # Listen port (requires restart to change)
+  error_pages_dir: ""      # Custom error page template directory (optional)
+
+# ── Wayback Machine ──────────────────────────────────────────────────
+wayback:
+  target_date: "20010911"    # Target date in YYYYMMDD format
+  date_tolerance_days: 365   # How far from target_date to accept snapshots
+  base_url: "https://web.archive.org"
+  geocities_fix: true        # Route geocities.com through oocities.org
+
+# ── Redis Cache ──────────────────────────────────────────────────────
+cache:
+  redis_url: "redis://localhost:6379/0"   # Requires restart to change
+  hot_ttl_seconds: 604800                 # Hot cache TTL — 7 days
+
+# ── Speed Throttling ─────────────────────────────────────────────────
+# Simulate period-accurate modem speeds.
+# Valid speeds: 14.4k, 28.8k, 56k, isdn, dsl, none
+throttle:
+  default_speed: "56k"        # Default for all visitors
+  allow_user_override: true   # Let visitors pick speed via header bar dropdown
+
+# ── Header Bar ───────────────────────────────────────────────────────
+# Overlay bar injected into every HTML page (post-cache).
+header_bar:
+  enabled: true
+  position: "top"            # top | bottom
+  custom_text: "Wayback Proxy"
+  show_speed_selector: true
+
+# ── Landing Page ─────────────────────────────────────────────────────
+landing_page:
+  enabled: true
+  most_viewed_count: 10      # Number of top domains to show
+
+# ── Admin Interface ──────────────────────────────────────────────────
+# The built-in admin at /_admin/ on the proxy port.
+admin:
+  enabled: true
+  password: "admin123"       # Empty string = no auth required
+
+# ── Access Control ───────────────────────────────────────────────────
+access:
+  mode: "open"               # open | allowlist
+
+# ── Prefetch Crawler ─────────────────────────────────────────────────
+crawler:
+  concurrency: 3             # Max parallel fetches
+  max_urls: 10000            # Cap on URLs per crawl (0 = unlimited)

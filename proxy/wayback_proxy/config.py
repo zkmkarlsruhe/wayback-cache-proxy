@@ -1,6 +1,6 @@
 """Configuration management for Wayback Proxy."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, asdict
 from typing import Optional
 import os
 
@@ -111,6 +111,66 @@ class Config:
     header_bar: HeaderBarConfig = field(default_factory=HeaderBarConfig)
     admin: AdminConfig = field(default_factory=AdminConfig)
     crawler: CrawlerConfig = field(default_factory=CrawlerConfig)
+
+    # Path to the YAML config file (not serialized, set at runtime)
+    _config_path: str = field(default="", repr=False)
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "Config":
+        """Load config from a YAML file.
+
+        YAML structure mirrors the dataclass hierarchy:
+            proxy:
+              host: "0.0.0.0"
+              port: 8888
+            wayback:
+              target_date: "20010911"
+            ...
+        """
+        import yaml
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        config = cls()
+
+        # Map each top-level YAML section to its dataclass
+        section_map = {f.name: f for f in fields(cls) if not f.name.startswith("_")}
+        for section_name, field_info in section_map.items():
+            section_data = data.get(section_name)
+            if not section_data or not isinstance(section_data, dict):
+                continue
+            sub_obj = getattr(config, section_name)
+            for key, value in section_data.items():
+                if hasattr(sub_obj, key):
+                    # Coerce to the expected type
+                    expected = type(getattr(sub_obj, key))
+                    if expected is bool and not isinstance(value, bool):
+                        value = str(value).lower() in ("1", "true", "yes")
+                    elif expected is int and not isinstance(value, int):
+                        value = int(value)
+                    elif expected is str and not isinstance(value, str):
+                        value = str(value)
+                    setattr(sub_obj, key, value)
+
+        config._config_path = path
+        return config
+
+    def to_yaml(self, path: str) -> None:
+        """Write config to a YAML file."""
+        import yaml
+
+        data = {}
+        for f in fields(self.__class__):
+            if f.name.startswith("_"):
+                continue
+            sub_obj = getattr(self, f.name)
+            section = {}
+            for sf in fields(sub_obj.__class__):
+                section[sf.name] = getattr(sub_obj, sf.name)
+            data[f.name] = section
+
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
     @classmethod
     def from_env(cls) -> "Config":

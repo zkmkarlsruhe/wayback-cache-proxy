@@ -11,6 +11,9 @@ from .server import run_proxy
 def main():
     parser = argparse.ArgumentParser(description="Wayback Machine HTTP Proxy")
     parser.add_argument(
+        "--config", default=None, help="Path to YAML config file"
+    )
+    parser.add_argument(
         "--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
     )
     parser.add_argument(
@@ -82,14 +85,21 @@ def main():
 
     args = parser.parse_args()
 
-    # Build config from env first
-    config = Config.from_env()
+    # Build config: YAML file → env vars → CLI args (highest priority)
+    if args.config:
+        config = Config.from_yaml(args.config)
+    else:
+        config = Config.from_env()
 
-    # Override with CLI args
-    config.proxy.host = args.host
-    config.proxy.port = args.port
-    config.wayback.target_date = args.date
-    config.cache.redis_url = args.redis
+    # Override with CLI args (only if explicitly provided)
+    if args.host != parser.get_default("host") or not args.config:
+        config.proxy.host = args.host
+    if args.port != parser.get_default("port") or not args.config:
+        config.proxy.port = args.port
+    if args.date != parser.get_default("date") or not args.config:
+        config.wayback.target_date = args.date
+    if args.redis != parser.get_default("redis") or not args.config:
+        config.cache.redis_url = args.redis
 
     if args.allowlist:
         config.access.mode = "allowlist"
