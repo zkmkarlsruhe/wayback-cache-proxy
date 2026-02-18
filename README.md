@@ -21,9 +21,12 @@ This proxy was built after that experience so it won't happen again. It fetches 
 
 ## Features
 
-- **Caching proxy** — fetches archived pages from the Wayback Machine and caches them in Redis for fast, offline-capable serving
+- **Configurable backend chain** — chain multiple sources in any order: local pywb WARC archives, Redis cache, and the Wayback Machine. Chain order decides priority.
+- **Caching proxy** — fetches archived pages and caches them in Redis for fast, offline-capable serving
+- **pywb integration** — serve pages from local WARC files via [pywb](https://github.com/webrecorder/pywb) before falling back to remote sources
 - **Two-tier cache** — permanent curated tier (admin/crawler managed) and auto-expiring hot tier (on-demand fetches)
-- **Admin interface** — web UI for managing crawl seeds, cache, and monitoring crawl progress with live updates
+- **WARC export** — export cache contents as `.warc.gz` files, diff against existing WARCs, and produce delta exports
+- **Admin interface** — web UI for managing crawl seeds, cache, WARC export, and monitoring crawl progress with live updates
 - **Prefetch crawler** — spider URLs from seed pages into curated cache before the exhibition opens
 - **Speed throttling** — simulate period-accurate connection speeds (14.4k, 28.8k, 56k, ISDN, DSL) with visitor-selectable dropdown
 - **Header bar overlay** — injected info bar showing current URL, archive date, and speed selector
@@ -109,6 +112,32 @@ See [`config.example.yaml`](config.example.yaml) for all available options with 
 | `--error-pages` | | Custom error page template directory |
 | `--no-landing-page` | | Disable the landing page |
 
+### Backend Chain
+
+The backend chain controls where the proxy looks for archived pages, and in what order. Configure it in `config.yaml`:
+
+```yaml
+backends:
+  chain:
+    - type: pywb
+      base_url: "http://localhost:8080"
+      collection: "web"
+    - type: cache
+    - type: wayback
+```
+
+This tries pywb first (local WARC files), then Redis cache, then the Wayback Machine. The chain order decides priority — once a backend responds, the rest are skipped.
+
+| Type | Description |
+|------|-------------|
+| `pywb` | Local WARC replay via pywb. Requires `base_url` and optional `collection` (default: `web`). |
+| `cache` | Redis cache lookup (curated tier first, then hot). |
+| `wayback` | Wayback Machine (live internet). Optional `base_url` override. |
+
+If the `backends` section is omitted, the default chain is `cache -> wayback` (original behavior).
+
+The crawler only uses live backends (Wayback Machine) regardless of chain configuration -- pywb and cache backends are excluded from crawl fetches.
+
 ### Live Config Reload
 
 When using `--config`, the proxy subscribes to a Redis Pub/Sub channel for live reload signals. The admin service publishes to this channel when you save config changes, so most settings take effect immediately without restarting the proxy.
@@ -134,6 +163,7 @@ Features:
 - **Configuration** — edit all settings through a web form, with live reload to the proxy
 - **Cache Browser** — paginated list with search, delete individual entries, clear tiers
 - **Crawler** — seed management, start/stop/recrawl, live log with htmx auto-refresh
+- **WARC Export** — download cache as `.warc.gz`, diff against existing WARCs, export only new entries (delta)
 
 ### Built-in Admin (/_admin/)
 
@@ -150,25 +180,27 @@ Access at `http://proxy-host:port/_admin/` (with Basic Auth if configured). This
 ## How It Works
 
 ```
-Browser  ──HTTP Proxy──>  Proxy (port 8888)  ──>  Redis (curated/hot)
-                                │                        │
-                                └── Wayback Machine ─────┘
-                                     (cache miss)
+Browser  ──HTTP Proxy──>  Proxy (port 8888)  ──>  Backend Chain
+                                │                   ├── pywb (local WARCs)
+                                │                   ├── Redis cache (curated/hot)
+                                │                   └── Wayback Machine
+                                │
+                                └── chain order decides priority, rest skipped
 
 Browser  ──HTTP──>  Admin Service (port 8080)
                          ├── config.yaml (read/write)
                          ├── Redis (cache, crawl, seeds)
+                         ├── WARC export/diff
                          └── Pub/Sub reload ──> Proxy
 ```
 
 The proxy is a raw asyncio TCP server that speaks HTTP. When a request comes in:
 
 1. Check the **allowlist** (if enabled) -- reject URLs not on the list
-2. Check **Redis cache** -- curated tier first (permanent, crawler-managed), then hot tier (auto-expires after 7 days)
-3. On cache miss, **fetch from the Wayback Machine** for the configured target date
-4. **Transform the content** -- strip the Wayback toolbar, remove injected scripts, fix asset URLs and links back to their original form
-5. **Store in hot cache** for next time
-6. **Inject the header bar** (if enabled) and **throttle the response** to simulate period-accurate connection speeds
+2. Walk the **backend chain** in configured order (e.g. pywb -> cache -> wayback) -- the chain order decides priority
+3. **Transform the content** if needed -- pywb and cache responses are already clean; Wayback responses get toolbar/script removal and URL fixing
+4. **Store in hot cache** if the response came from a live backend (Wayback Machine) -- pywb and cache hits skip this
+5. **Inject the header bar** (if enabled) and **throttle the response** to simulate period-accurate connection speeds
 
 The header bar is injected *after* the cache lookup, so cached pages don't need invalidation when you change header bar settings.
 
@@ -176,6 +208,16 @@ The header bar is injected *after* the cache lookup, so cached pages don't need 
 
 - **Curated** -- permanent entries managed by the admin interface and prefetch crawler. These survive Redis restarts (with AOF persistence) and represent your vetted, exhibition-ready content.
 - **Hot** -- auto-populated on cache miss, expires after 7 days (configurable). Acts as a working cache for pages visitors discover on their own.
+
+### WARC Export
+
+The admin service can export Redis cache contents as standard `.warc.gz` files at `/warc/`:
+
+- **Export** — download the full cache (or a filtered subset) as a WARC archive
+- **Diff** — upload an existing `.warc.gz` and see which URLs are only in the cache, only in the WARC, or in both
+- **Delta export** — upload a WARC and download only the URLs that are new in the cache
+
+This lets you build up a WARC archive incrementally: run the proxy, let visitors browse, then export the new pages and merge them into your master WARC collection.
 
 ### Project Structure
 
@@ -189,8 +231,11 @@ proxy/                          # The proxy server
 │   ├── admin.py                # Built-in /_admin/ interface
 │   ├── crawler.py              # Async prefetch spider
 │   ├── throttle.py             # Modem speed throttling
+│   ├── warc_export.py          # WARC export, diff, delta export
 │   └── wayback/
+│       ├── backend.py          # Backend ABC, chain, cache backend, factory
 │       ├── client.py           # Wayback Machine HTTP client
+│       ├── pywb_client.py      # pywb replay client
 │       └── transformer.py      # Content cleanup (toolbar, URLs, scripts)
 ├── error_pages/                # Error page templates
 ├── landing_page/               # Landing page template
@@ -200,7 +245,7 @@ admin_service/                  # Remote admin UI (FastAPI + htmx)
 ├── admin_service/
 │   ├── __main__.py             # Uvicorn entry point
 │   ├── app.py                  # FastAPI app, auth middleware
-│   ├── routes/                 # Dashboard, config editor, cache browser, crawler
+│   ├── routes/                 # Dashboard, config, cache, crawler, WARC export
 │   ├── templates/              # Jinja2 + htmx templates
 │   └── static/                 # Dark theme CSS
 └── Dockerfile
