@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}WARC Diff{% endblock %}
+
+{% block content %}
+<h2>WARC Diff Results</h2>
+<p style="color:var(--text-muted)">
+  Compared <strong>{{ tier }}</strong> cache against <code>{{ warc_filename }}</code>
+</p>
+
+<div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap">
+  <div class="card" style="flex:1;min-width:200px;text-align:center">
+    <div style="font-size:28px;font-weight:bold;color:var(--accent)">{{ only_in_cache|length }}</div>
+    <div style="color:var(--text-muted);font-size:13px">Only in cache</div>
+  </div>
+  <div class="card" style="flex:1;min-width:200px;text-align:center">
+    <div style="font-size:28px;font-weight:bold;color:var(--text-muted)">{{ in_both }}</div>
+    <div style="color:var(--text-muted);font-size:13px">In both</div>
+  </div>
+  <div class="card" style="flex:1;min-width:200px;text-align:center">
+    <div style="font-size:28px;font-weight:bold;color:#c07040">{{ only_in_warc|length }}</div>
+    <div style="color:var(--text-muted);font-size:13px">Only in WARC</div>
+  </div>
+</div>
+
+{% if only_in_cache %}
+<div class="card" style="margin-top:16px">
+  <h3>Only in Cache ({{ only_in_cache|length }})</h3>
+  <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">
+    These URLs are in the cache but not in the WARC file. Use "Export Delta" to download them.
+  </p>
+  <div style="max-height:300px;overflow-y:auto">
+    <table>
+      <tbody>
+        {% for url in only_in_cache %}
+        <tr><td style="font-size:13px">{{ url }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if only_in_warc %}
+<div class="card" style="margin-top:16px">
+  <h3>Only in WARC ({{ only_in_warc|length }})</h3>
+  <p style="color:var(--text-muted);font-size:13px;margin-bottom:8px">
+    These URLs are in the WARC file but not in the cache.
+  </p>
+  <div style="max-height:300px;overflow-y:auto">
+    <table>
+      <tbody>
+        {% for url in only_in_warc %}
+        <tr><td style="font-size:13px">{{ url }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-top:16px">
+  <a href="/warc/" class="btn">Back to WARC Export</a>
+</div>
+{% endblock %}

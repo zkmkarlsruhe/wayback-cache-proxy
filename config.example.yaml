@@ -58,3 +58,17 @@ access:
 crawler:
   concurrency: 3             # Max parallel fetches
   max_urls: 10000            # Cap on URLs per crawl (0 = unlimited)
+
+# ── Backend Chain ───────────────────────────────────────────────────
+# Tried in order. First hit wins.
+#   type: pywb    — local WARC archives via pywb
+#   type: cache   — Redis cache (curated + hot tiers)
+#   type: wayback — Wayback Machine (live internet)
+# If omitted, defaults to: cache → wayback
+backends:
+  chain:
+    # - type: pywb
+    #   base_url: "http://localhost:8080"
+    #   collection: "web"
+    - type: cache
+    - type: wayback

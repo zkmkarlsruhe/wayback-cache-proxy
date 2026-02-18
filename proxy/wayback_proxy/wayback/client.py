@@ -3,18 +3,8 @@
 import re
 import httpx
 from typing import Optional
-from dataclasses import dataclass
 
-
-@dataclass
-class WaybackResponse:
-    """Response from Wayback Machine."""
-    status_code: int
-    headers: dict
-    content: bytes
-    content_type: str
-    archived_url: str
-    timestamp: str
+from .backend import Backend, WaybackResponse
 
 
 # Patterns for detecting Wayback Machine special pages
@@ -36,7 +26,7 @@ GEOCITIES_HOSTS = ("www.geocities.com", "geocities.com")
 OOCITIES_HOST = "www.oocities.org"
 
 
-class WaybackClient:
+class WaybackClient(Backend):
     """Client for fetching pages from the Wayback Machine."""
 
     MAX_REDIRECTS = 10
@@ -58,9 +48,21 @@ class WaybackClient:
             headers={"User-Agent": "WaybackProxy/0.1.0"},
         )
 
-    async def close(self):
+    @property
+    def name(self) -> str:
+        return f"wayback({self.base_url})"
+
+    @property
+    def is_live(self) -> bool:
+        return True
+
+    async def close(self) -> None:
         """Close the HTTP client."""
         await self._client.aclose()
+
+    def update_date_config(self, target_date: str, date_tolerance_days: int) -> None:
+        self.target_date = target_date
+        self.date_tolerance_days = date_tolerance_days
 
     def build_wayback_url(self, url: str, modifier: str = "if_") -> str:
         """Build Wayback Machine URL."""

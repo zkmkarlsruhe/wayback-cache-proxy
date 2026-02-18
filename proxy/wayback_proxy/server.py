@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from .config import Config
 from .cache import Cache, CachedResponse
 from .throttle import SPEED_TIERS, write_throttled
-from .wayback import WaybackClient, ContentTransformer
+from .wayback import ContentTransformer, build_backend
 from .admin import AdminHandler
 from .crawler import Crawler
 
@@ -52,12 +52,6 @@ class ProxyServer:
             hot_prefix=config.cache.hot_prefix,
             allowlist_key=config.cache.allowlist_key,
         )
-        self.wayback = WaybackClient(
-            target_date=config.wayback.target_date,
-            date_tolerance_days=config.wayback.date_tolerance_days,
-            base_url=config.wayback.base_url,
-            geocities_fix=config.wayback.geocities_fix,
-        )
         self.transformer = ContentTransformer(
             remove_toolbar=config.transform.remove_wayback_toolbar,
             remove_scripts=config.transform.remove_wayback_scripts,
@@ -65,14 +59,16 @@ class ProxyServer:
             fix_asset_urls=config.transform.fix_asset_urls,
             normalize_links=config.transform.normalize_links,
         )
+        self.backend = build_backend(config, cache=self.cache)
         self._server: Optional[asyncio.Server] = None
         self._crawl_task: Optional[asyncio.Task] = None
         self._reload_task: Optional[asyncio.Task] = None
 
-        # Admin + crawler
+        # Admin + crawler (crawler uses only live backends)
         self.admin = AdminHandler(self.cache) if config.admin.enabled else None
+        live_backend = self.backend.live_only()
         self.crawler = Crawler(
-            self.cache, self.wayback, self.transformer, config.crawler,
+            self.cache, live_backend, self.transformer, config.crawler,
         ) if config.admin.enabled else None
 
         # Load error page templates
@@ -361,6 +357,7 @@ class ProxyServer:
 
         addr = self._server.sockets[0].getsockname()
         print(f"[PROXY] Listening on {addr[0]}:{addr[1]}")
+        print(f"[PROXY] Backend: {self.backend.name}")
         print(f"[PROXY] Target date: {self.config.wayback.target_date}")
         print(f"[PROXY] Access mode: {self.config.access.mode}")
         if self.config.throttle.default_speed != "none":
@@ -385,7 +382,7 @@ class ProxyServer:
         if self._server:
             self._server.close()
             await self._server.wait_closed()
-        await self.wayback.close()
+        await self.backend.close()
         await self.cache.close()
 
     async def _config_reload_listener(self):
@@ -427,12 +424,13 @@ class ProxyServer:
 
         new_config = Config.from_yaml(path)
 
-        # Wayback settings
+        # Wayback settings — propagate to all backends in the chain
         old_date = self.config.wayback.target_date
         self.config.wayback.target_date = new_config.wayback.target_date
         self.config.wayback.date_tolerance_days = new_config.wayback.date_tolerance_days
-        self.wayback.target_date = new_config.wayback.target_date
-        self.wayback.date_tolerance_days = new_config.wayback.date_tolerance_days
+        self.backend.update_date_config(
+            new_config.wayback.target_date, new_config.wayback.date_tolerance_days,
+        )
         if old_date != new_config.wayback.target_date:
             print(f"[PROXY] Reloaded target_date: {old_date} -> {new_config.wayback.target_date}")
 
@@ -579,17 +577,8 @@ class ProxyServer:
                     )
                     return
 
-            # Try cache first
-            cached = await self.cache.get(url)
-            if cached:
-                await self._send_response(writer, cached, speed=speed)
-                # Track view for HTML pages only (skip assets)
-                if "text/html" in cached.content_type:
-                    asyncio.create_task(self._track_view_safe(url))
-                return
-
-            # Fetch from Wayback
-            response = await self.wayback.fetch(url)
+            # Fetch from backend chain (cache, pywb, wayback — in configured order)
+            response = await self.backend.fetch(url)
             if not response:
                 await self._send_error(writer, 404, "Not Found", url=url)
                 return
@@ -601,23 +590,26 @@ class ProxyServer:
                     await self._send_redirect(writer, response.status_code, location)
                     return
 
-            # Transform content
-            transformed_content = self.transformer.transform(
-                response.content, response.content_type
+            # Transform content (skip for cache/pywb hits — already clean)
+            content = (
+                self.transformer.transform(response.content, response.content_type)
+                if response.needs_transform
+                else response.content
             )
 
-            # Create cached response
+            # Build cached response
             cached_response = CachedResponse(
                 status_code=response.status_code,
                 headers=response.headers,
-                content=transformed_content,
+                content=content,
                 content_type=response.content_type,
                 archived_url=response.archived_url,
                 timestamp=response.timestamp,
             )
 
-            # Store in hot cache
-            await self.cache.set_hot(url, cached_response)
+            # Store in hot cache (only for live backend responses)
+            if response.cacheable:
+                await self.cache.set_hot(url, cached_response)
 
             # Send to client
             await self._send_response(writer, cached_response, speed=speed)

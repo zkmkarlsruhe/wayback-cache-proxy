@@ -16,6 +16,7 @@ from .routes import dashboard as dashboard_routes
 from .routes import config as config_routes
 from .routes import cache as cache_routes
 from .routes import crawler as crawler_routes
+from .routes import warc as warc_routes
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -69,5 +70,6 @@ def create_app() -> FastAPI:
     app.include_router(config_routes.router)
     app.include_router(cache_routes.router)
     app.include_router(crawler_routes.router)
+    app.include_router(warc_routes.router)
 
     return app

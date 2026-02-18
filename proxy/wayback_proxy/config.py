@@ -98,6 +98,19 @@ class CrawlerConfig:
 
 
 @dataclass
+class BackendsConfig:
+    """Backend chain configuration.
+
+    chain is a list of dicts, each with at least a "type" key:
+      - type: pywb    (base_url, collection)
+      - type: cache
+      - type: wayback  (base_url optional)
+    If empty/omitted, defaults to: cache -> wayback.
+    """
+    chain: list = field(default_factory=list)
+
+
+@dataclass
 class Config:
     """Main configuration."""
     proxy: ProxyConfig = field(default_factory=ProxyConfig)
@@ -111,6 +124,7 @@ class Config:
     header_bar: HeaderBarConfig = field(default_factory=HeaderBarConfig)
     admin: AdminConfig = field(default_factory=AdminConfig)
     crawler: CrawlerConfig = field(default_factory=CrawlerConfig)
+    backends: BackendsConfig = field(default_factory=BackendsConfig)
 
     # Path to the YAML config file (not serialized, set at runtime)
     _config_path: str = field(default="", repr=False)
