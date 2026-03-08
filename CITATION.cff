@@ -2,8 +2,9 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "Wayback Cache Proxy"
-version: 0.1.0
-date-released: "2025-01-01"
+version: 0.2.0
+date-released: "2026-02-15"
+doi: "10.5281/zenodo.18652679"
 license: MIT
 repository-code: "https://github.com/zkmkarlsruhe/wayback-cache-proxy"
 url: "https://zkm.de"

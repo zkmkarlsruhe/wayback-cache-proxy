@@ -16,6 +16,7 @@
         <a href="/config/" class="{% if request.url.path.startswith('/config') %}active{% endif %}">Configuration</a>
         <a href="/cache/" class="{% if request.url.path.startswith('/cache') %}active{% endif %}">Cache</a>
         <a href="/crawler/" class="{% if request.url.path.startswith('/crawler') %}active{% endif %}">Crawler</a>
+        <a href="/warc/" class="{% if request.url.path.startswith('/warc') %}active{% endif %}">WARC Export</a>
       </nav>
       <div class="sidebar-footer">
         <a href="/logout" style="color:var(--text-muted);font-size:12px">Logout</a>
