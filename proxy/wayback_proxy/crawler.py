@@ -9,7 +9,7 @@ from urllib.parse import urljoin, urlparse
 
 from .cache import Cache, CachedResponse
 from .config import CrawlerConfig
-from .wayback import WaybackClient, ContentTransformer
+from .wayback import Backend, ContentTransformer
 
 
 # Patterns for extracting links and assets from HTML
@@ -27,12 +27,12 @@ class Crawler:
     def __init__(
         self,
         cache: Cache,
-        wayback: WaybackClient,
+        backend: Backend,
         transformer: ContentTransformer,
         config: CrawlerConfig,
     ):
         self.cache = cache
-        self.wayback = wayback
+        self.backend = backend
         self.transformer = transformer
         self.concurrency = config.concurrency
         self.same_domain_only = config.same_domain_only
@@ -88,7 +88,7 @@ class Crawler:
                 await update_progress(current_url=url)
 
                 try:
-                    response = await self.wayback.fetch(url)
+                    response = await self.backend.fetch(url)
                     if not response:
                         await update_progress(delta_errors=1)
                         await self._log(f"MISS  {url}")
@@ -100,8 +100,12 @@ class Crawler:
                         await self._log(f"REDIR {url} -> {location}")
                         return None
 
-                    transformed = self.transformer.transform(
-                        response.content, response.content_type,
+                    transformed = (
+                        self.transformer.transform(
+                            response.content, response.content_type,
+                        )
+                        if response.needs_transform
+                        else response.content
                     )
 
                     cached = CachedResponse(

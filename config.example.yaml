@@ -58,3 +58,39 @@ access:
 crawler:
   concurrency: 3             # Max parallel fetches
   max_urls: 10000            # Cap on URLs per crawl (0 = unlimited)
+
+# ── Backend Chain ───────────────────────────────────────────────────
+# Tried in order — chain order decides priority.
+#   type: local   — forward matching requests to a self-hosted API
+#   type: pywb    — local WARC archives via pywb (multiple instances allowed)
+#   type: cache   — Redis cache (curated + hot tiers)
+#   type: wayback — Wayback Machine (live internet)
+# If omitted, defaults to: cache → wayback
+backends:
+  chain:
+    # Local API replacement — intercept requests to specific hostnames
+    # and forward them to a self-hosted service. Supports fnmatch patterns.
+    # - type: local
+    #   base_url: "http://localhost:9000"
+    #   hostnames:                   # omit for catch-all
+    #     - "api.sounddogs.com"      # exact hostname
+    #     - "*.example.com"          # wildcard pattern
+    #   timeout: 30                  # request timeout in seconds
+    #
+    # pywb replay mode — local WARC files served via URL rewriting
+    # - type: pywb
+    #   base_url: "http://localhost:8080"
+    #   collection: "web"
+    #   mode: replay               # default — /{collection}/{ts}id_/{url}
+    #
+    # pywb proxy mode — memento proxy with archive sequences (Rhizome, IA, LOC, etc.)
+    # - type: pywb
+    #   base_url: "http://localhost:8089"
+    #   mode: proxy                # send requests through pywb as HTTP proxy
+    #
+    # Multiple instances — one per artwork, each with its own archive config
+    # - type: pywb
+    #   base_url: "http://localhost:8090"
+    #   mode: proxy
+    - type: cache
+    - type: wayback

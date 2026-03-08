@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}WARC Export{% endblock %}
+
+{% block content %}
+<h2>WARC Export</h2>
+
+<div class="card">
+  <h3>Export Cache</h3>
+  <p style="color:var(--text-muted);margin-bottom:12px">
+    Download cache contents as a <code>.warc.gz</code> file.
+  </p>
+  <form method="get" action="/warc/export" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">Tier</label>
+      <select name="tier" class="btn btn-sm">
+        <option value="both">Both</option>
+        <option value="curated">Curated only</option>
+        <option value="hot">Hot only</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">URL filter (glob)</label>
+      <input type="text" name="filter" placeholder="*geocities*" style="width:300px">
+    </div>
+    <button type="submit" class="btn">Download .warc.gz</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <h3>Diff Against WARC</h3>
+  <p style="color:var(--text-muted);margin-bottom:12px">
+    Upload an existing <code>.warc.gz</code> file to see what's new in the cache.
+  </p>
+  <form method="post" action="/warc/diff" enctype="multipart/form-data"
+        style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">WARC file</label>
+      <input type="file" name="warc" accept=".warc,.warc.gz" required>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">Tier</label>
+      <select name="tier" class="btn btn-sm">
+        <option value="both">Both</option>
+        <option value="curated">Curated only</option>
+        <option value="hot">Hot only</option>
+      </select>
+    </div>
+    <button type="submit" class="btn">Show Diff</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <h3>Export Delta</h3>
+  <p style="color:var(--text-muted);margin-bottom:12px">
+    Upload an existing <code>.warc.gz</code> and download only the URLs that are
+    in the cache but <strong>not</strong> in the WARC file.
+  </p>
+  <form method="post" action="/warc/export-diff" enctype="multipart/form-data"
+        style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">WARC file</label>
+      <input type="file" name="warc" accept=".warc,.warc.gz" required>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">Tier</label>
+      <select name="tier" class="btn btn-sm">
+        <option value="both">Both</option>
+        <option value="curated">Curated only</option>
+        <option value="hot">Hot only</option>
+      </select>
+    </div>
+    <button type="submit" class="btn">Download Delta .warc.gz</button>
+  </form>
+</div>
+{% endblock %}

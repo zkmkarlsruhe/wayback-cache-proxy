@@ -32,6 +32,32 @@ services:
       - redis
     restart: unless-stopped
 
+  # ── pywb instances (optional) ────────────────────────────────────
+  # Uncomment and duplicate for each artwork / WARC collection.
+  # Each instance needs its own config, WARC directory, and port.
+  # Reference the service name in config.yaml backends chain:
+  #   - type: pywb
+  #     base_url: "http://pywb-artwork-a:8080"
+  #     collection: "web"
+  #
+  # pywb-artwork-a:
+  #   image: webrecorder/pywb:latest
+  #   ports:
+  #     - "8089:8080"
+  #   volumes:
+  #     - ./warcs/artwork-a:/webarchive/collections/web/archive
+  #     - ./pywb-configs/artwork-a.yaml:/webarchive/config.yaml
+  #   restart: unless-stopped
+  #
+  # pywb-artwork-b:
+  #   image: webrecorder/pywb:latest
+  #   ports:
+  #     - "8090:8080"
+  #   volumes:
+  #     - ./warcs/artwork-b:/webarchive/collections/web/archive
+  #     - ./pywb-configs/artwork-b.yaml:/webarchive/config.yaml
+  #   restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:

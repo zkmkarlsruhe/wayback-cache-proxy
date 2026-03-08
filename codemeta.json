@@ -1,0 +1,37 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "https://doi.org/10.5281/zenodo.18652679",
+  "name": "Wayback Cache Proxy",
+  "description": "HTTP/HTTPS caching proxy for the Wayback Machine. Redis-backed two-tier cache, admin interface, prefetch crawler, modem speed throttling, and header bar overlay. Built for museums and media art exhibitions.",
+  "version": "0.2.0",
+  "datePublished": "2026-02-15",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/zkmkarlsruhe/wayback-cache-proxy",
+  "programmingLanguage": "Python",
+  "operatingSystem": "Linux",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Marc",
+      "familyName": "Schütze",
+      "email": "mschuetze@zkm.de",
+      "@id": "https://orcid.org/0009-0007-0718-4251",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "ZKM | Center for Art and Media Karlsruhe",
+        "url": "https://zkm.de"
+      }
+    }
+  ],
+  "keywords": [
+    "wayback-machine",
+    "proxy",
+    "caching",
+    "museum",
+    "media-art",
+    "net-art",
+    "digital-preservation",
+    "web-archive"
+  ]
+}

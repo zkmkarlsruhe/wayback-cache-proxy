@@ -1,6 +1,6 @@
 [project]
 name = "wayback-admin"
-version = "0.1.0"
+version = "0.2.0"
 description = "FastAPI admin service for Wayback Cache Proxy"
 authors = [
     {name = "Marc Schütze", email = "mschuetze@zkm.de"}
