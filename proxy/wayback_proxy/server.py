@@ -14,6 +14,7 @@ from .throttle import SPEED_TIERS, write_throttled
 from .wayback import ContentTransformer, build_backend
 from .admin import AdminHandler
 from .crawler import Crawler
+from .https import CertAuthority
 
 
 # Default error descriptions per code
@@ -63,6 +64,21 @@ class ProxyServer:
         self._server: Optional[asyncio.Server] = None
         self._crawl_task: Optional[asyncio.Task] = None
         self._reload_task: Optional[asyncio.Task] = None
+
+        # HTTPS MITM: a trusted-CA man-in-the-middle so CONNECT/https requests are
+        # decrypted and re-enter the normal pipeline (see wayback_proxy.https).
+        self.ca: Optional[CertAuthority] = None
+        if config.https.enabled:
+            try:
+                self.ca = CertAuthority(
+                    config.https.ca_cert_path, config.https.ca_key_path,
+                    default_leaf_hash=getattr(config.https, "leaf_hash", "sha1"),
+                    cipher_profile=getattr(config.https, "cipher_profile", "legacy"),
+                    tls_min=getattr(config.https, "tls_min", "TLSv1"),
+                )
+            except Exception as e:  # never let CA setup kill the proxy; http still works
+                print(f"[HTTPS] MITM disabled — CA init failed: {e}")
+                self.ca = None
 
         # Admin + crawler (crawler uses only live backends)
         self.admin = AdminHandler(self.cache) if config.admin.enabled else None
@@ -459,46 +475,151 @@ class ProxyServer:
 
         print("[PROXY] Config reloaded successfully")
 
+    async def _read_request_head(
+        self, reader: asyncio.StreamReader
+    ) -> Optional[tuple[str, str, dict]]:
+        """Read the request line + headers from a (plaintext) stream.
+
+        Returns (method, target, headers) or None on EOF / malformed start.
+        """
+        request_line = await reader.readline()
+        if not request_line:
+            return None
+        request_str = request_line.decode("utf-8", errors="replace").strip()
+        parts = request_str.split(" ")
+        if len(parts) < 2:
+            return ("", "", {})  # signal "bad request" to caller
+        method = parts[0].upper()
+        target = parts[1]
+        headers: dict = {}
+        while True:
+            line = await reader.readline()
+            if line in (b"\r\n", b"\n", b""):
+                break
+            try:
+                key, value = line.decode("utf-8", errors="replace").strip().split(":", 1)
+                headers[key.strip().lower()] = value.strip()
+            except ValueError:
+                continue
+        return (method, target, headers)
+
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ):
-        """Handle incoming client connection."""
-        url = ""
+        """Handle incoming client connection (the cleartext front door)."""
         try:
-            # Read request line
-            request_line = await reader.readline()
-            if not request_line:
+            head = await self._read_request_head(reader)
+            if head is None:
                 writer.close()
                 return
-
-            request_str = request_line.decode("utf-8", errors="replace").strip()
-            parts = request_str.split(" ")
-
-            if len(parts) < 2:
+            method, target, headers = head
+            if not method:
                 await self._send_error(writer, 400, "Bad Request")
                 return
 
-            method = parts[0].upper()
-            target = parts[1]
-
-            # Read headers
-            headers = {}
-            while True:
-                line = await reader.readline()
-                if line in (b"\r\n", b"\n", b""):
-                    break
-                try:
-                    key, value = line.decode("utf-8", errors="replace").strip().split(":", 1)
-                    headers[key.strip().lower()] = value.strip()
-                except ValueError:
-                    continue
-
-            # Handle CONNECT (HTTPS tunnel) - for now just reject
+            # Handle CONNECT (HTTPS) via trusted-CA MITM. The MITM path takes over the
+            # socket (start_tls replaces the transport) and closes its own TLS writer,
+            # so we must NOT close the cleartext writer afterwards — return early.
             if method == "CONNECT":
-                # TODO: Implement MITM
-                await self._send_error(writer, 501, "CONNECT not implemented yet")
+                await self._handle_connect(reader, writer, target, headers)
                 return
 
+            await self._process_request(reader, writer, method, target, headers, scheme="http")
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception:
+                pass
+
+    async def _handle_connect(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        target: str,
+        headers: dict,
+    ):
+        """MITM a CONNECT tunnel: accept it, present a CA-signed leaf cert for the
+        requested host, then service the decrypted https request(s) through the
+        normal pipeline. Requires the guest to trust our root CA."""
+        if not self.ca:
+            await self._send_error(writer, 501, "HTTPS MITM not enabled")
+            return
+
+        host = target.split(":")[0] if target else ""
+        if not host:
+            await self._send_error(writer, 400, "Bad CONNECT target")
+            return
+
+        # Tell the client the tunnel is up, THEN start TLS on the same socket.
+        writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        await writer.drain()
+
+        try:
+            ssl_ctx = self.ca.server_context(host)
+        except Exception as e:
+            print(f"[HTTPS] leaf cert/context failed for {host}: {e}")
+            return
+
+        loop = asyncio.get_event_loop()
+        # Upgrade the accepted connection to TLS as the server side. Build a FRESH
+        # StreamReader + StreamReaderProtocol bound to the new TLS transport so flow
+        # control / drain wire up correctly (reusing the cleartext protocol stalls the
+        # response write after the handshake).
+        tls_reader = asyncio.StreamReader(loop=loop)
+        tls_protocol = asyncio.StreamReaderProtocol(tls_reader, loop=loop)
+        try:
+            new_transport = await loop.start_tls(
+                writer.transport, tls_protocol, ssl_ctx, server_side=True
+            )
+        except Exception as e:
+            # XP with an incompatible cipher, or a client that gave up — log + drop.
+            print(f"[HTTPS] TLS handshake failed for {host}: {e}")
+            return
+        if new_transport is None:
+            print(f"[HTTPS] start_tls returned no transport for {host}")
+            return
+        # start_tls already drove tls_protocol.connection_made() on handshake; just
+        # build a writer over the resulting TLS transport.
+        tls_writer = asyncio.StreamWriter(new_transport, tls_protocol, tls_reader, loop)
+
+        # Service one request over the tunnel (Connection: close keeps it simple and
+        # matches how the rest of the proxy responds).
+        try:
+            head = await self._read_request_head(tls_reader)
+            if not head or not head[0]:
+                return
+            method, t, h = head
+            await self._process_request(tls_reader, tls_writer, method, t, h, scheme="https", default_host=host)
+        finally:
+            try:
+                tls_writer.close()
+                await tls_writer.wait_closed()
+            except Exception:
+                pass
+
+    async def _process_request(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        method: str,
+        target: str,
+        headers: dict,
+        scheme: str = "http",
+        default_host: str = "",
+    ):
+        """Service a single (already-parsed) request through the archive pipeline.
+
+        ``scheme`` is the scheme to assume for origin-form targets (``/path``) —
+        "https" for requests that arrived inside a MITM'd CONNECT tunnel. This is the
+        body shared by the cleartext and the decrypted-https paths."""
+        url = ""
+        try:
             # Admin interface
             if self.admin and target.startswith("/_admin"):
                 if not self._check_admin_auth(headers):
@@ -552,12 +673,12 @@ class ProxyServer:
 
             # Parse URL
             if target.startswith("/"):
-                # Transparent proxy mode - need Host header
-                host = headers.get("host")
+                # Origin-form: transparent proxy / inside a MITM tunnel — need Host.
+                host = headers.get("host") or default_host
                 if not host:
                     await self._send_error(writer, 400, "Host header required")
                     return
-                url = f"http://{host}{target}"
+                url = f"{scheme}://{host}{target}"
             else:
                 url = target
 
@@ -641,12 +762,6 @@ class ProxyServer:
             print(f"[PROXY] Error: {e}")
             try:
                 await self._send_error(writer, 500, "Internal Server Error", url=url)
-            except Exception:
-                pass
-        finally:
-            try:
-                writer.close()
-                await writer.wait_closed()
             except Exception:
                 pass
 
