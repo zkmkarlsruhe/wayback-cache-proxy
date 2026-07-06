@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "description": [
+    "To enable auto-merge, add presets: local>mschuetze/renovate-bot:auto-patch or local>mschuetze/renovate-bot:auto-minor"
+  ],
+  "registryAliases": {
+    "docker.io": "harbor.zkm.de/dockerhub-cache"
+  }
+}
