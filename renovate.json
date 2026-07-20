@@ -4,7 +4,7 @@
     "config:recommended"
   ],
   "description": [
-    "To enable auto-merge, add presets: local>mschuetze/renovate-bot:auto-patch or local>mschuetze/renovate-bot:auto-minor"
+    "To enable auto-merge, add presets: local>MuTech/infra/utilities/renovate-bot:auto-patch or local>MuTech/infra/utilities/renovate-bot:auto-minor"
   ],
   "registryAliases": {
     "docker.io": "harbor.zkm.de/dockerhub-cache"
