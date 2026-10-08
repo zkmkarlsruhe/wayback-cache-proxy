@@ -40,6 +40,11 @@ class TransformConfig:
     fix_base_tags: bool = True
     fix_asset_urls: bool = True
     normalize_links: bool = True
+    # Opt-in (default OFF, keeps proxy semantics correct): follow archive-internal
+    # redirects (incl. host normalization www->www1, :80) server-side and serve the
+    # final content, for PERIOD CLIENTS that cannot follow redirects (2001 Director
+    # projector, IE4). Browsers should leave this off and get the proper 302-to-nearest.
+    follow_redirects: bool = False
 
 
 @dataclass
@@ -205,6 +210,8 @@ class Config:
             config.wayback.target_date = date
         if tolerance := os.getenv("DATE_TOLERANCE_DAYS"):
             config.wayback.date_tolerance_days = int(tolerance)
+        if (fr := os.getenv("FOLLOW_REDIRECTS")) is not None:
+            config.transform.follow_redirects = fr.strip().lower() in ("1", "true", "yes", "on")
 
         # Cache
         if redis_url := os.getenv("REDIS_URL"):

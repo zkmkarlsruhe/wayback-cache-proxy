@@ -36,11 +36,13 @@ class WaybackClient(Backend):
         target_date: str = "20010101",
         date_tolerance_days: int = 365,
         base_url: str = "https://web.archive.org",
+        follow_redirects: bool = False,
         geocities_fix: bool = True,
     ):
         self.target_date = target_date
         self.date_tolerance_days = date_tolerance_days
         self.base_url = base_url
+        self.follow_redirects = follow_redirects
         self.geocities_fix = geocities_fix
         self._client = httpx.AsyncClient(
             timeout=30.0,
@@ -148,15 +150,20 @@ class WaybackClient(Backend):
                     # If it redirects to a different site, pass the redirect
                     # to the client instead of following it ourselves
                     if archived_dest != fetch_url and archived_dest != url:
-                        print(f"[REDIRECT] {url} -> {archived_dest}")
-                        return WaybackResponse(
-                            status_code=response.status_code,
-                            headers={"location": archived_dest},
-                            content=b"",
-                            content_type="text/html",
-                            archived_url=url,
-                            timestamp=self._extract_timestamp(location, self.target_date),
-                        )
+                        if not self.follow_redirects:
+                            print(f"[REDIRECT] {url} -> {archived_dest}")
+                            return WaybackResponse(
+                                status_code=response.status_code,
+                                headers={"location": archived_dest},
+                                content=b"",
+                                content_type="text/html",
+                                archived_url=url,
+                                timestamp=self._extract_timestamp(location, self.target_date),
+                            )
+                        # follow_redirects policy: period client cannot follow redirects,
+                        # so chase the archive redirect (incl. host shift) and serve content.
+                        print(f"[FOLLOW] {url} -> {archived_dest}")
+                        fetch_url = archived_dest
 
                 # Same-site redirect (different date/modifier), follow it
                 if location.startswith("/"):
