@@ -143,6 +143,7 @@ def build_backend(config, cache: Cache) -> BackendChain:
                 date_tolerance_days=config.wayback.date_tolerance_days,
                 base_url=config.wayback.base_url,
                 geocities_fix=config.wayback.geocities_fix,
+                follow_redirects=config.transform.follow_redirects,
             ),
         ])
 
@@ -157,6 +158,7 @@ def build_backend(config, cache: Cache) -> BackendChain:
                 date_tolerance_days=config.wayback.date_tolerance_days,
                 base_url=entry.get("base_url", config.wayback.base_url),
                 geocities_fix=config.wayback.geocities_fix,
+                follow_redirects=config.transform.follow_redirects,
             ))
         elif btype == "pywb":
             backends.append(PywbClient(
@@ -184,6 +186,7 @@ def build_backend(config, cache: Cache) -> BackendChain:
                 date_tolerance_days=config.wayback.date_tolerance_days,
                 base_url=config.wayback.base_url,
                 geocities_fix=config.wayback.geocities_fix,
+                follow_redirects=config.transform.follow_redirects,
             ),
         ])
 
