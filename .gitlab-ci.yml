@@ -1,0 +1,43 @@
+# CI: pytest for proxy/, kaniko build of proxy/Dockerfile -> harbor.zkm.de/mutech/wayback-cache-proxy
+# (MuTech pattern, KB "ZKM kaniko .gitlab-ci.yml build template"). MRs build without push;
+# main pushes :<sha>, :<calver>, :latest with the commit as image revision label.
+variables:
+  IMAGE: $CI_REGISTRY/mutech/wayback-cache-proxy
+
+stages: [test, build]
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+test:proxy:
+  stage: test
+  image: $CI_REGISTRY/dockerhub-cache/library/python:3.14-slim
+  variables: {POETRY_VIRTUALENVS_CREATE: "false", POETRY_NO_INTERACTION: "1"}
+  before_script:
+    - cd proxy
+    - pip install --no-cache-dir poetry==2.5.1 pytest
+    - poetry install --no-root
+  script: [python -m pytest -q tests]
+
+build:image:
+  stage: build
+  image:
+    name: $CI_REGISTRY/mutech/kaniko-executor:debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - |
+      cat > /kaniko/.docker/config.json <<EOF
+      {"auths":{"$CI_REGISTRY":{"auth":"$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_TOKEN" | base64 -w0)"}}}
+      EOF
+  script:
+    - |
+      ARGS="--context $CI_PROJECT_DIR/proxy --dockerfile $CI_PROJECT_DIR/proxy/Dockerfile --label org.opencontainers.image.revision=$CI_COMMIT_SHORT_SHA"
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        ARGS="$ARGS --destination $IMAGE:$CI_COMMIT_SHORT_SHA --destination $IMAGE:$(date -u +%Y.%m.%d).$CI_PIPELINE_IID --destination $IMAGE:latest"
+      else
+        ARGS="$ARGS --no-push"
+      fi
+      /kaniko/executor $ARGS
