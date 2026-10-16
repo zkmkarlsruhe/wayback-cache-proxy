@@ -217,7 +217,8 @@ def _sign_cert_openssl(builder: x509.CertificateBuilder, issuer_key, *,
             (D / "leaf.ext").write_text(
                 "[v3]\n"
                 "basicConstraints=critical,CA:FALSE\n"
-                "extendedKeyUsage=serverAuth\n" + san_line
+                "extendedKeyUsage=serverAuth\n"
+                "authorityKeyIdentifier=keyid\n" + san_line
             )
             subprocess.run(
                 ["openssl", "req", "-new", "-sha1", "-key", str(D / "leaf.key"),
@@ -396,6 +397,11 @@ class CertAuthority:
             .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
             .add_extension(
                 x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False
+            )
+            # AKI: OpenSSL X509_STRICT (Python 3.13+ default verify) rejects leaves without it.
+            .add_extension(
+                x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_cert.public_key()),
+                critical=False,
             )
         )
         # PKCS#1 v1.5 (RSA default) — never PSS for legacy CryptoAPI. SHA-1 routes
