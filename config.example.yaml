@@ -19,6 +19,25 @@ wayback:
   base_url: "https://web.archive.org"
   geocities_fix: true        # Route geocities.com through oocities.org
 
+# ── HTTPS MITM ───────────────────────────────────────────────────────
+# Terminate TLS at the proxy with a trusted root CA so https requests are
+# decrypted and resolved through the same archive backend chain as http.
+# The guest must install ca_cert_path into its trust stores (Windows root
+# store + Firefox enterprise-roots). The CA is generated on first start if
+# the files are absent; persist /certs across restarts to keep it stable.
+https:
+  enabled: true
+  ca_cert_path: "/certs/ca.crt"
+  ca_key_path: "/certs/ca.key"
+  # Per-guest-OS cert profile (research/30). Win2000 / XP pre-SP3 have no SHA-2 in
+  # CryptoAPI, so they need SHA-1 leaves chaining to a SHA-1 root. The proxy keeps
+  # BOTH a SHA-1 (ca-sha1.crt) and a SHA-256 (ca.crt) root; leaf_hash picks which
+  # the minted leaves use. SHA-1 is the safe universal default (validates on every
+  # Windows via the installed-root exemption). The controller overrides per project.
+  leaf_hash: "sha1"            # sha1 | sha256
+  cipher_profile: "legacy"     # legacy (3DES/AES-CBC + @SECLEVEL=0) | modern
+  tls_min: "TLSv1"             # TLSv1 for legacy guests, TLSv1_2 for modern
+
 # ── Redis Cache ──────────────────────────────────────────────────────
 cache:
   redis_url: "redis://localhost:6379/0"   # Requires restart to change

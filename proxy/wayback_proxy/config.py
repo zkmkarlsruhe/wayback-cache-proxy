@@ -49,10 +49,26 @@ class TransformConfig:
 
 @dataclass
 class HttpsConfig:
-    """HTTPS MITM configuration."""
+    """HTTPS MITM configuration.
+
+    Per-guest-OS cert profile (research/30): legacy Windows (2000 / XP pre-SP3)
+    has no SHA-2 in CryptoAPI, so it needs SHA-1-signed leaves chaining to a
+    SHA-1 root. The controller picks a profile per project and tells the proxy via
+    these fields. The proxy maintains BOTH a SHA-1 and a SHA-256 root CA (the
+    SHA-1 one is ``ca-sha1.crt`` beside ``ca_cert_path``); ``leaf_hash`` selects
+    which the on-the-fly leaves are signed with.
+    """
     enabled: bool = True
     ca_cert_path: str = "/certs/ca.crt"
     ca_key_path: str = "/certs/ca.key"
+    # sha1 | sha256 — the signature hash for minted leaves (and the matching CA).
+    # SHA-1 is the universal fallback (validates everywhere via the installed-root
+    # exemption); default conservative when the guest SP is unknown.
+    leaf_hash: str = "sha1"
+    # legacy (explicit 3DES/AES-CBC + @SECLEVEL=0) | modern (stock default).
+    cipher_profile: str = "legacy"
+    # Minimum TLS version name (TLSv1 for legacy guests, TLSv1_2 for modern).
+    tls_min: str = "TLSv1"
 
 
 @dataclass
