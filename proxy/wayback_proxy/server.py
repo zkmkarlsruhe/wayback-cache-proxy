@@ -556,15 +556,19 @@ class ProxyServer:
             await self._send_error(writer, 400, "Bad CONNECT target")
             return
 
-        # Tell the client the tunnel is up, THEN start TLS on the same socket.
-        writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-        await writer.drain()
-
+        # Mint the leaf BEFORE the 200: the client sends its ClientHello right after
+        # reading the 200, and any loop turn between the 200 and start_tls lets the
+        # cleartext reader swallow it (handshake then hangs). Failure -> 502, not a dead tunnel.
         try:
             ssl_ctx = self.ca.server_context(host)
         except Exception as e:
             print(f"[HTTPS] leaf cert/context failed for {host}: {e}")
+            await self._send_error(writer, 502, "HTTPS leaf certificate failed")
             return
+
+        # Tell the client the tunnel is up, then start TLS on the same socket with no
+        # await in between (drain() would yield to the loop).
+        writer.write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
 
         loop = asyncio.get_event_loop()
         # Upgrade the accepted connection to TLS as the server side. Build a FRESH
